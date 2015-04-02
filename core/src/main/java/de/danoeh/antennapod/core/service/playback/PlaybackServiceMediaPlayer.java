@@ -45,38 +45,38 @@ public class PlaybackServiceMediaPlayer {
      */
     public static final int INVALID_TIME = -1;
 
-    private final AudioManager audioManager;
+    protected final AudioManager audioManager;
 
-    private volatile PlayerStatus playerStatus;
-    private volatile PlayerStatus statusBeforeSeeking;
-    private volatile IPlayer mediaPlayer;
-    private volatile Playable media;
+    protected volatile PlayerStatus playerStatus;
+    protected volatile PlayerStatus statusBeforeSeeking;
+    protected volatile IPlayer mediaPlayer;
+    protected volatile Playable media;
     /**
      * Only used for Lollipop notifications.
      */
-    private final MediaSessionCompat mediaSession;
+    protected final MediaSessionCompat mediaSession;
 
-    private volatile boolean stream;
-    private volatile MediaType mediaType;
-    private volatile AtomicBoolean startWhenPrepared;
-    private volatile boolean pausedBecauseOfTransientAudiofocusLoss;
-    private volatile Pair<Integer, Integer> videoSize;
+    protected volatile boolean stream;
+    protected volatile MediaType mediaType;
+    protected volatile AtomicBoolean startWhenPrepared;
+    protected volatile boolean pausedBecauseOfTransientAudiofocusLoss;
+    protected volatile Pair<Integer, Integer> videoSize;
 
     /**
      * Some asynchronous calls might change the state of the MediaPlayer object. Therefore calls in other threads
      * have to wait until these operations have finished.
      */
-    private final ReentrantLock playerLock;
+    protected final ReentrantLock playerLock;
 
-    private final PSMPCallback callback;
-    private final Context context;
+    protected final PSMPCallback callback;
+    protected final Context context;
 
-    private final ThreadPoolExecutor executor;
+    protected final ThreadPoolExecutor executor;
 
     /**
      * A wifi-lock that is acquired if the media file is being streamed.
      */
-    private WifiManager.WifiLock wifiLock;
+    protected WifiManager.WifiLock wifiLock;
 
     public PlaybackServiceMediaPlayer(Context context, PSMPCallback callback) {
         Validate.notNull(context);
@@ -169,7 +169,8 @@ public class PlaybackServiceMediaPlayer {
 
 
         if (media != null) {
-            if (!forceReset && media.getIdentifier().equals(playable.getIdentifier())) {
+            if (!forceReset && media.getIdentifier().equals(playable.getIdentifier())
+                    && playerStatus == PlayerStatus.PLAYING) {
                 // episode is already playing -> ignore method call
                 if (BuildConfig.DEBUG)
                     Log.d(TAG, "Method call to playMediaObject was ignored: media file already playing.");
@@ -227,7 +228,7 @@ public class PlaybackServiceMediaPlayer {
         }
     }
 
-    private MediaMetadataCompat getMediaSessionMetadata(Playable p) {
+    protected MediaMetadataCompat getMediaSessionMetadata(Playable p) {
         MediaMetadataCompat.Builder builder = new MediaMetadataCompat.Builder();
         builder.putString(MediaMetadataCompat.METADATA_KEY_TITLE, p.getEpisodeTitle());
         builder.putString(MediaMetadataCompat.METADATA_KEY_ALBUM, p.getFeedTitle());
@@ -252,7 +253,7 @@ public class PlaybackServiceMediaPlayer {
         });
     }
 
-    private void resumeSync() {
+    protected void resumeSync() {
         if (playerStatus == PlayerStatus.PAUSED || playerStatus == PlayerStatus.PREPARED) {
             int focusGained = audioManager.requestAudioFocus(
                     audioFocusChangeListener, AudioManager.STREAM_MUSIC,
@@ -427,7 +428,7 @@ public class PlaybackServiceMediaPlayer {
      *          <p/>
      *          This method is executed on the caller's thread.
      */
-    private void seekToSync(int t) {
+    protected void seekToSync(int t) {
         if (t < 0) {
             t = 0;
         }
@@ -565,7 +566,7 @@ public class PlaybackServiceMediaPlayer {
         playerLock.lock();
         if (media != null && media.getMediaType() == MediaType.AUDIO) {
             if (mediaPlayer.canSetSpeed()) {
-                mediaPlayer.setPlaybackSpeed((float) speed);
+                mediaPlayer.setPlaybackSpeed(speed);
                 if (BuildConfig.DEBUG)
                     Log.d(TAG, "Playback speed was set to " + speed);
                 callback.playbackSpeedChanged(speed);
@@ -712,7 +713,7 @@ public class PlaybackServiceMediaPlayer {
      * @param newStatus The new PlayerStatus. This must not be null.
      * @param newMedia  The new playable object of the PSMP object. This can be null.
      */
-    private synchronized void setPlayerStatus(PlayerStatus newStatus, Playable newMedia) {
+    protected synchronized void setPlayerStatus(PlayerStatus newStatus, Playable newMedia) {
         Validate.notNull(newStatus);
 
         if (BuildConfig.DEBUG) Log.d(TAG, "Setting player status to " + newStatus);
@@ -775,7 +776,7 @@ public class PlaybackServiceMediaPlayer {
         return setMediaPlayerListeners(mediaPlayer);
     }
 
-    private final AudioManager.OnAudioFocusChangeListener audioFocusChangeListener = new AudioManager.OnAudioFocusChangeListener() {
+    protected final AudioManager.OnAudioFocusChangeListener audioFocusChangeListener = new AudioManager.OnAudioFocusChangeListener() {
 
         @Override
         public void onAudioFocusChange(final int focusChange) {
@@ -881,7 +882,7 @@ public class PlaybackServiceMediaPlayer {
         });
     }
 
-    private synchronized void acquireWifiLockIfNecessary() {
+    protected synchronized void acquireWifiLockIfNecessary() {
         if (stream) {
             if (wifiLock == null) {
                 wifiLock = ((WifiManager) context.getSystemService(Context.WIFI_SERVICE))
@@ -892,7 +893,7 @@ public class PlaybackServiceMediaPlayer {
         }
     }
 
-    private synchronized void releaseWifiLockIfNecessary() {
+    protected synchronized void releaseWifiLockIfNecessary() {
         if (wifiLock != null && wifiLock.isHeld()) {
             wifiLock.release();
         }
@@ -911,22 +912,22 @@ public class PlaybackServiceMediaPlayer {
         }
     }
 
-    public static interface PSMPCallback {
-        public void statusChanged(PSMPInfo newInfo);
+    public interface PSMPCallback {
+        void statusChanged(PSMPInfo newInfo);
 
-        public void shouldStop();
+        void shouldStop();
 
-        public void playbackSpeedChanged(float s);
+        void playbackSpeedChanged(float s);
 
-        public void onBufferingUpdate(int percent);
+        void onBufferingUpdate(int percent);
 
-        public boolean onMediaPlayerInfo(int code);
+        boolean onMediaPlayerInfo(int code);
 
-        public boolean onMediaPlayerError(Object inObj, int what, int extra);
+        boolean onMediaPlayerError(Object inObj, int what, int extra);
 
-        public boolean endPlayback(boolean playNextEpisode);
+        boolean endPlayback(boolean playNextEpisode);
 
-        public RemoteControlClient getRemoteControlClient();
+        RemoteControlClient getRemoteControlClient();
     }
 
     private IPlayer setMediaPlayerListeners(IPlayer mp) {
@@ -954,14 +955,14 @@ public class PlaybackServiceMediaPlayer {
         return mp;
     }
 
-    private final com.aocate.media.MediaPlayer.OnCompletionListener audioCompletionListener = new com.aocate.media.MediaPlayer.OnCompletionListener() {
+    protected final com.aocate.media.MediaPlayer.OnCompletionListener audioCompletionListener = new com.aocate.media.MediaPlayer.OnCompletionListener() {
         @Override
         public void onCompletion(com.aocate.media.MediaPlayer mp) {
             genericOnCompletion();
         }
     };
 
-    private final android.media.MediaPlayer.OnCompletionListener videoCompletionListener = new android.media.MediaPlayer.OnCompletionListener() {
+    protected final android.media.MediaPlayer.OnCompletionListener videoCompletionListener = new android.media.MediaPlayer.OnCompletionListener() {
         @Override
         public void onCompletion(android.media.MediaPlayer mp) {
             genericOnCompletion();
@@ -972,7 +973,7 @@ public class PlaybackServiceMediaPlayer {
         endPlayback();
     }
 
-    private final com.aocate.media.MediaPlayer.OnBufferingUpdateListener audioBufferingUpdateListener = new com.aocate.media.MediaPlayer.OnBufferingUpdateListener() {
+    protected final com.aocate.media.MediaPlayer.OnBufferingUpdateListener audioBufferingUpdateListener = new com.aocate.media.MediaPlayer.OnBufferingUpdateListener() {
         @Override
         public void onBufferingUpdate(com.aocate.media.MediaPlayer mp,
                                       int percent) {
@@ -980,7 +981,7 @@ public class PlaybackServiceMediaPlayer {
         }
     };
 
-    private final android.media.MediaPlayer.OnBufferingUpdateListener videoBufferingUpdateListener = new android.media.MediaPlayer.OnBufferingUpdateListener() {
+    protected final android.media.MediaPlayer.OnBufferingUpdateListener videoBufferingUpdateListener = new android.media.MediaPlayer.OnBufferingUpdateListener() {
         @Override
         public void onBufferingUpdate(android.media.MediaPlayer mp, int percent) {
             genericOnBufferingUpdate(percent);
@@ -1010,7 +1011,7 @@ public class PlaybackServiceMediaPlayer {
         return callback.onMediaPlayerInfo(what);
     }
 
-    private final com.aocate.media.MediaPlayer.OnErrorListener audioErrorListener = new com.aocate.media.MediaPlayer.OnErrorListener() {
+    protected final com.aocate.media.MediaPlayer.OnErrorListener audioErrorListener = new com.aocate.media.MediaPlayer.OnErrorListener() {
         @Override
         public boolean onError(com.aocate.media.MediaPlayer mp, int what,
                                int extra) {
@@ -1018,25 +1019,25 @@ public class PlaybackServiceMediaPlayer {
         }
     };
 
-    private final android.media.MediaPlayer.OnErrorListener videoErrorListener = new android.media.MediaPlayer.OnErrorListener() {
+    protected final android.media.MediaPlayer.OnErrorListener videoErrorListener = new android.media.MediaPlayer.OnErrorListener() {
         @Override
         public boolean onError(android.media.MediaPlayer mp, int what, int extra) {
             return genericOnError(mp, what, extra);
         }
     };
 
-    private boolean genericOnError(Object inObj, int what, int extra) {
+    protected boolean genericOnError(Object inObj, int what, int extra) {
         return callback.onMediaPlayerError(inObj, what, extra);
     }
 
-    private final com.aocate.media.MediaPlayer.OnSeekCompleteListener audioSeekCompleteListener = new com.aocate.media.MediaPlayer.OnSeekCompleteListener() {
+    protected final com.aocate.media.MediaPlayer.OnSeekCompleteListener audioSeekCompleteListener = new com.aocate.media.MediaPlayer.OnSeekCompleteListener() {
         @Override
         public void onSeekComplete(com.aocate.media.MediaPlayer mp) {
             genericSeekCompleteListener();
         }
     };
 
-    private final android.media.MediaPlayer.OnSeekCompleteListener videoSeekCompleteListener = new android.media.MediaPlayer.OnSeekCompleteListener() {
+    protected final android.media.MediaPlayer.OnSeekCompleteListener videoSeekCompleteListener = new android.media.MediaPlayer.OnSeekCompleteListener() {
         @Override
         public void onSeekComplete(android.media.MediaPlayer mp) {
             genericSeekCompleteListener();
@@ -1056,7 +1057,7 @@ public class PlaybackServiceMediaPlayer {
         });
     }
 
-    private final MediaSessionCompat.Callback sessionCallback = new MediaSessionCompat.Callback() {
+    protected final MediaSessionCompat.Callback sessionCallback = new MediaSessionCompat.Callback() {
 
         @Override
         public void onPlay() {

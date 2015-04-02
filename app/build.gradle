@@ -2,6 +2,9 @@ apply plugin: 'com.android.application'
 
 repositories {
     mavenCentral()
+    maven {
+        url "http://4thline.org/m2"
+    }
 }
 dependencies {
     compile 'com.android.support:support-v4:21.0.3'
@@ -17,6 +20,13 @@ dependencies {
     compile 'com.squareup.okhttp:okhttp:2.2.0'
     compile 'com.squareup.okhttp:okhttp-urlconnection:2.2.0'
     compile 'com.squareup.okio:okio:1.2.0'
+    compile 'org.fourthline.cling:cling-core:2.0.1'
+    compile 'org.fourthline.cling:cling-support:2.0.1'
+    compile 'org.eclipse.jetty:jetty-server:8.1.12.v20130726'
+    compile 'org.eclipse.jetty:jetty-servlet:8.1.12.v20130726'
+    compile 'org.eclipse.jetty:jetty-client:8.1.12.v20130726'
+    compile 'org.slf4j:slf4j-jdk14:1.7.5'
+
     compile project(':core')
     compile project(':library:drag-sort-listview')
 }
@@ -81,6 +91,8 @@ android {
     packagingOptions {
         exclude 'META-INF/LICENSE.txt'
         exclude 'META-INF/NOTICE.txt'
+        exclude 'META-INF/beans.xml'
+        exclude 'LICENSE.txt'
     }
 
     lintOptions {

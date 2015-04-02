@@ -1,5 +1,11 @@
 apply plugin: 'com.android.library'
 
+repositories {
+    mavenCentral()
+    maven {
+        url "http://4thline.org/m2"
+    }
+}
 android {
     compileSdkVersion 21
     buildToolsVersion "21.1.2"
@@ -45,4 +51,7 @@ dependencies {
     compile 'com.squareup.okhttp:okhttp-urlconnection:2.2.0'
     compile 'com.squareup.okio:okio:1.2.0'
     compile 'com.nineoldandroids:library:2.4.0'
+    compile 'org.fourthline.cling:cling-core:2.0.1'
+    compile 'org.fourthline.cling:cling-support:2.0.1'
+    compile 'com.nanohttpd:nanohttpd-webserver:2.1.1'
 }

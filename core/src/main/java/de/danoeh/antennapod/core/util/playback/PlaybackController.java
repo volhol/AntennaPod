@@ -1,7 +1,13 @@
 package de.danoeh.antennapod.core.util.playback;
 
 import android.app.Activity;
-import android.content.*;
+import android.content.BroadcastReceiver;
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.ServiceConnection;
+import android.content.SharedPreferences;
 import android.content.res.TypedArray;
 import android.media.MediaPlayer;
 import android.os.AsyncTask;
@@ -19,6 +25,14 @@ import android.widget.TextView;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Validate;
 
+import java.util.List;
+import java.util.concurrent.RejectedExecutionHandler;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+
 import de.danoeh.antennapod.core.BuildConfig;
 import de.danoeh.antennapod.core.R;
 import de.danoeh.antennapod.core.feed.Chapter;
@@ -32,8 +46,8 @@ import de.danoeh.antennapod.core.service.playback.PlayerStatus;
 import de.danoeh.antennapod.core.storage.DBTasks;
 import de.danoeh.antennapod.core.util.Converter;
 import de.danoeh.antennapod.core.util.playback.Playable.PlayableUtils;
-
-import java.util.concurrent.*;
+import de.danoeh.antennapod.upnp.MediaRenderer;
+import de.danoeh.antennapod.upnp.PlaybackServiceUpnpMediaPlayer;
 
 /**
  * Communicates with the playback service. GUI classes should use this class to
@@ -43,6 +57,7 @@ public abstract class PlaybackController {
     private static final String TAG = "PlaybackController";
 
     public static final int INVALID_TIME = -1;
+    public static final int NO_PLAYER_SERVICE = -1;
 
     private final Activity activity;
 
@@ -580,6 +595,10 @@ public abstract class PlaybackController {
             @Override
             public void onClick(View v) {
                 if (playbackService != null) {
+                    // processing on upnp devices may take some time. this shows we attempt to execute the command
+                    if (upnpMedaiRendererSelected()) {
+                        updatePlayButtonAppearance(R.drawable.ic_cancel_grey600_24dp, "progressing");
+                    }
                     switch (status) {
                         case PLAYING:
                             playbackService.pause(true, reinitOnPause);
@@ -681,6 +700,62 @@ public abstract class PlaybackController {
     public void setSleepTimer(long time) {
         if (playbackService != null) {
             playbackService.setSleepTimer(time);
+        }
+    }
+
+    public boolean upnpMedaiRendererSelected() {
+        return (getUpnpMediaRenderer() != null) && (getUpnpMediaRenderer().getDevice() != null);
+    }
+
+    public void setUPnPMediaRenderer(MediaRenderer device) {
+        if (playbackService != null) {
+            // processing on upnp devices may take some time. this shows we attempt to execute the command
+            updatePlayButtonAppearance(R.drawable.ic_cancel_grey600_24dp, "progressing");
+            playbackService.setUpnpMediaRenderer(device);
+        }
+    }
+
+    public MediaRenderer getUpnpMediaRenderer() {
+        if (playbackService != null) {
+            return playbackService.getUpnpMediaRenderer();
+        }
+        else {
+            return null;
+        }
+    }
+
+    public List<MediaRenderer> getAvailableUpnpMediaRenderers() {
+        if (playbackService != null) {
+            return playbackService.getAvailableUpnpMediaRenderers();
+        }
+        else {
+            return null;
+        }
+    }
+
+    public void registerCallback(PlaybackServiceUpnpMediaPlayer.PSMPDeviceListCallback callback) {
+        if (playbackService != null) {
+            playbackService.registerCallback(callback);
+        }
+    }
+
+    public int setUpnpVolumeUp() {
+        if (playbackService != null) {
+            return playbackService.setUpnpVolumeUp();
+        }
+        return NO_PLAYER_SERVICE;
+    }
+
+    public int setUpnpVolumeDown() {
+        if (playbackService != null) {
+            return playbackService.setUpnpVolumeDown();
+        }
+        return NO_PLAYER_SERVICE;
+    }
+
+    public void unregisterCallback() {
+        if (playbackService != null) {
+            playbackService.unregisterCallback();
         }
     }
 

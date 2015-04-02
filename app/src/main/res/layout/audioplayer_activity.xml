@@ -128,6 +128,17 @@
                     android:scaleType="centerInside"
                     android:src="@drawable/ic_toc_white_36dp"
                     tools:background="@android:color/holo_green_dark" />
+
+                <ImageButton
+                    android:id="@+id/butUpnpDevice"
+                    android:layout_width="@dimen/audioplayer_playercontrols_length"
+                    android:layout_height="match_parent"
+                    android:layout_toRightOf="@id/butFF"
+                    android:background="?attr/selectableItemBackground"
+                    android:scaleType="centerInside"
+                    android:src="@drawable/ic_feed_white_24dp"
+                    android:visibility="invisible"
+                    tools:background="@android:color/holo_green_dark"/>
             </RelativeLayout>
 
             <RelativeLayout

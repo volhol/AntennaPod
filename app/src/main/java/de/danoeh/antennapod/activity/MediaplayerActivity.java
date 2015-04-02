@@ -9,14 +9,16 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
-import android.view.Window;
+import android.view.View;
 import android.widget.ImageButton;
 import android.widget.SeekBar;
 import android.widget.SeekBar.OnSeekBarChangeListener;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import de.danoeh.antennapod.BuildConfig;
 import de.danoeh.antennapod.R;
@@ -31,7 +33,10 @@ import de.danoeh.antennapod.core.util.StorageUtils;
 import de.danoeh.antennapod.core.util.playback.MediaPlayerError;
 import de.danoeh.antennapod.core.util.playback.Playable;
 import de.danoeh.antennapod.core.util.playback.PlaybackController;
+import de.danoeh.antennapod.dialog.SelectMediaRendererDialog;
 import de.danoeh.antennapod.dialog.TimeDialog;
+import de.danoeh.antennapod.upnp.MediaRenderer;
+import de.danoeh.antennapod.upnp.PlaybackServiceUpnpMediaPlayer;
 
 /**
  * Provides general features which are both needed for playing audio and video
@@ -145,6 +150,31 @@ public abstract class MediaplayerActivity extends ActionBarActivity
             }
         };
 
+    }
+
+    @Override
+    public boolean dispatchKeyEvent(KeyEvent event) {
+        int keyCode = event.getKeyCode();
+        if (!controller.upnpMedaiRendererSelected()) {
+            return super.dispatchKeyEvent(event);
+        }
+        int volume;
+        switch (keyCode) {
+            case KeyEvent.KEYCODE_VOLUME_UP:
+                volume = controller.setUpnpVolumeUp();
+                showVolumeToast(volume);
+                return true;
+            case KeyEvent.KEYCODE_VOLUME_DOWN:
+                volume = controller.setUpnpVolumeDown();
+                showVolumeToast(volume);
+                return true;
+            default:
+                return super.dispatchKeyEvent(event);
+        }
+    }
+
+    protected void showVolumeToast(int volume) {
+        (new Toast(this)).makeText(this, "Volume " + volume, Toast.LENGTH_SHORT).show();
     }
 
     protected void onPlaybackSpeedChange() {
@@ -324,10 +354,8 @@ public abstract class MediaplayerActivity extends ActionBarActivity
                             }
                         };
                         td.show();
-
-                        break;
-
                     }
+                    break;
                 case R.id.visit_website_item:
                     Uri uri = Uri.parse(media.getWebsiteLink());
                     startActivity(new Intent(Intent.ACTION_VIEW, uri));
@@ -344,6 +372,38 @@ public abstract class MediaplayerActivity extends ActionBarActivity
                 case R.id.skip_episode_item:
                     sendBroadcast(new Intent(
                             PlaybackService.ACTION_SKIP_CURRENT_EPISODE));
+                    break;
+                case R.id.select_media_renderer:
+                    if (controller.serviceAvailable()) {
+                        SelectMediaRendererDialog smrd = new SelectMediaRendererDialog(this,
+                                controller.getAvailableUpnpMediaRenderers(),
+                                controller.getUpnpMediaRenderer()) {
+                            @Override
+                            public void onMediaRendererSelected(MediaRenderer mediaRenderer) {
+                                controller.unregisterCallback();
+                                if (mediaRenderer.getDevice() != null) {
+                                    butFF.setVisibility(View.INVISIBLE);
+                                    butRev.setVisibility(View.INVISIBLE);
+                                }
+                                else {
+                                    butFF.setVisibility(View.VISIBLE);
+                                    butRev.setVisibility(View.VISIBLE);
+                                }
+                                controller.setUPnPMediaRenderer(mediaRenderer);
+                            }
+
+                            @Override
+                            public void onMediaRendererNotSelected() {
+                                controller.unregisterCallback();
+                            }
+
+                            @Override
+                            public void registerCallback(PlaybackServiceUpnpMediaPlayer.PSMPDeviceListCallback callback) {
+                                controller.registerCallback(callback);
+                            }
+                        };
+                        smrd.show();
+                    }
                     break;
                 default:
                     return false;
@@ -450,6 +510,14 @@ public abstract class MediaplayerActivity extends ActionBarActivity
             butRev.setOnClickListener(controller.newOnRevButtonClickListener());
         }
 
+        if (controller.upnpMedaiRendererSelected()) {
+            butFF.setVisibility(View.INVISIBLE);
+            butRev.setVisibility(View.INVISIBLE);
+        }
+        else {
+            butFF.setVisibility(View.VISIBLE);
+            butRev.setVisibility(View.VISIBLE);
+        }
     }
 
     protected abstract int getContentViewResourceId();

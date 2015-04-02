@@ -36,5 +36,10 @@
         custom:showAsAction="collapseActionView"
         android:title="@string/skip_episode_label"
         android:visible="true"/>
+    <item
+        android:id="@+id/select_media_renderer"
+        custom:showAsAction="collapseActionView"
+        android:title="Select media renderer"
+        android:visible="true"/>
 
 </menu>
